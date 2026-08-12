@@ -1,0 +1,25 @@
+# Rust (fgraph/)
+/fgraph/target/
+**/*.pdb
+
+# Python (fgraph-gui/)
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+*.egg
+
+# fgraph-gui dev-only mock harness scratch (nothing to ignore here yet, kept
+# vendored assets under web/vendor/ tracked intentionally -- offline-first)
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# Logs / local scratch
+*.log

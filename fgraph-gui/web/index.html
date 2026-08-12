@@ -1,0 +1,295 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>fgraph — living file graph</title>
+<style>
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("vendor/fonts/inter-400.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("vendor/fonts/inter-500.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("vendor/fonts/inter-600.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("vendor/fonts/inter-700.woff2") format("woff2");
+  }
+
+  :root {
+    --bg-deep: #020203;
+    --bg-base: #050506;
+    --bg-elevated: #0a0a0c;
+    --surface: rgba(255, 255, 255, 0.05);
+    --surface-strong: rgba(255, 255, 255, 0.08);
+    --text: #ededef;
+    --text-dim: #8a8f98;
+    --accent: #5e6ad2;
+    --accent-bright: #7b85e8;
+    --accent-glow: rgba(94, 106, 210, 0.35);
+    --border: rgba(255, 255, 255, 0.08);
+    --danger: #ff4d4d;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg-deep); }
+  #graph { position: fixed; inset: 0; }
+
+  /* Soft glow that tracks the selected node's projected screen position -- a cheap
+     stand-in for real bloom (the 3D scene's three.js instance isn't reachable from
+     here to construct custom glow objects, so this is done in 2D over the canvas). */
+  #nodeGlow {
+    position: fixed; width: 90px; height: 90px; border-radius: 50%;
+    transform: translate(-50%, -50%); pointer-events: none; z-index: 2;
+    filter: blur(18px); opacity: 0; transition: opacity 0.2s var(--ease);
+  }
+
+  /* Slow ambient light, purely decorative behind the glass panel -- paused for reduced-motion. */
+  .ambient-blob {
+    position: fixed; z-index: 1; border-radius: 50%; pointer-events: none;
+    filter: blur(60px); opacity: 0.12; animation: drift 22s ease-in-out infinite alternate;
+  }
+  .ambient-blob.a { top: -120px; left: -100px; width: 420px; height: 420px; background: var(--accent); }
+  .ambient-blob.b { bottom: -160px; left: 80px; width: 360px; height: 360px; background: #2dd4bf; animation-delay: -9s; }
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(30px, 20px) scale(1.08); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ambient-blob { animation: none; }
+    .progress-fill { animation: none; }
+    .legend-row { animation: none; opacity: 1; }
+  }
+
+  #sidebar {
+    position: fixed; top: 16px; left: 16px; bottom: 16px; width: 320px;
+    background: rgba(5, 5, 6, 0.74); border: 1px solid var(--border);
+    border-radius: var(--radius); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    color: var(--text); padding: 20px; overflow-y: auto; z-index: 10;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  #sidebar::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; border-radius: var(--radius) var(--radius) 0 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+  }
+  #sidebar::-webkit-scrollbar { width: 8px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--surface-strong); border-radius: 4px; }
+  h1 { font-size: 16px; margin: 0 0 4px; font-weight: 600; letter-spacing: 0.2px; }
+  .sub { color: var(--text-dim); font-size: 11px; margin-bottom: 18px; }
+  .section { margin-bottom: 20px; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim);
+    margin-bottom: 8px; display: block; font-weight: 500; }
+  input[type=text], input[type=number] {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text); padding: 10px 12px; font-size: 13px;
+    font-family: inherit; outline: none; min-height: 40px; transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  }
+  input::placeholder { color: var(--text-dim); }
+  input:hover { border-color: rgba(255,255,255,0.18); }
+  input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .row input[type=text] { flex: 1; }
+  .row input[type=number] { width: 68px; }
+  button {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12.5px;
+    font-family: inherit; font-weight: 500; cursor: pointer; white-space: nowrap; min-height: 40px;
+    transition: background 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.1s var(--ease);
+  }
+  button:hover { background: var(--surface-strong); border-color: rgba(255,255,255,0.2); }
+  button:active { transform: scale(0.97); }
+  button:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); border-color: var(--accent); }
+  button.wide { width: 100%; }
+  button#scanBtn, button#searchBtn {
+    background: rgba(94, 106, 210, 0.16); border-color: rgba(94, 106, 210, 0.4); color: var(--accent-bright);
+  }
+  button#scanBtn:hover, button#searchBtn:hover { background: rgba(94, 106, 210, 0.28); box-shadow: 0 0 16px var(--accent-glow); }
+  button.ghost { background: transparent; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px; font-size: 12.5px; line-height: 1.5;
+  }
+  .card .name { font-weight: 600; font-size: 13px; margin-bottom: 4px; word-break: break-word; }
+  .card .path { color: var(--text-dim); word-break: break-all; margin-bottom: 6px; }
+  .legend-row {
+    display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 7px; color: var(--text);
+    opacity: 0; animation: legendIn 0.4s var(--ease) forwards;
+  }
+  @keyframes legendIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
+  .hint { color: var(--text-dim); font-size: 11px; line-height: 1.6; }
+  #status { font-size: 11px; color: var(--text-dim); margin-top: 6px; min-height: 14px; transition: opacity 0.15s var(--ease); }
+  #loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    z-index: 20; pointer-events: none; transition: opacity 0.3s var(--ease);
+  }
+  .loading-card {
+    background: rgba(5,5,6,0.8); border: 1px solid var(--border); border-radius: var(--radius);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    padding: 32px 40px; min-width: 280px; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  #loadingPercent {
+    font-size: 40px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px; margin-bottom: 14px;
+  }
+  .progress-track {
+    width: 220px; height: 6px; border-radius: 3px; background: var(--surface); overflow: hidden; margin: 0 auto 14px;
+  }
+  .progress-fill {
+    height: 100%; width: 0%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-bright), var(--accent));
+    background-size: 200% 100%; animation: shimmer 1.8s linear infinite;
+    box-shadow: 0 0 12px var(--accent-glow); transition: width 0.25s var(--ease);
+  }
+  @keyframes shimmer {
+    from { background-position: 0% 0; }
+    to { background-position: -200% 0; }
+  }
+  #loadingDetail {
+    font-size: 12px; color: var(--text-dim); max-width: 260px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; margin: 0 auto;
+  }
+  #loadingCaption { font-size: 11.5px; color: var(--text-dim); margin-top: 10px; line-height: 1.5; }
+
+  /* Account chooser: shown once at launch, before any scan starts. */
+  #chooser {
+    position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 40%, #0a0a10 0%, var(--bg-deep) 70%);
+    transition: opacity 0.3s var(--ease), visibility 0.3s var(--ease);
+  }
+  #chooser.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .chooser-inner { width: 100%; max-width: 420px; padding: 24px; text-align: center; position: relative; }
+  .chooser-inner h1 { font-size: 22px; margin-bottom: 6px; }
+  .chooser-inner .sub { font-size: 13px; margin-bottom: 28px; }
+  .chooser-back {
+    position: absolute; top: 0; left: 24px; font-size: 12px; color: var(--text-dim);
+    cursor: pointer; padding: 6px 0; transition: color 0.2s var(--ease);
+  }
+  .chooser-back:hover { color: var(--accent-bright); }
+  .chooser-back.hidden { display: none; }
+  .user-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .user-card {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 12px 14px; color: var(--text); font-size: 14px; font-family: inherit; font-weight: 500;
+    cursor: pointer; text-align: left; min-height: 44px;
+    transition: background 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.1s var(--ease);
+  }
+  .user-card:hover { background: var(--surface-strong); border-color: rgba(255,255,255,0.2); }
+  .user-card:active { transform: scale(0.98); }
+  .user-card:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); border-color: var(--accent); }
+  .user-card.current { border-color: rgba(94,106,210,0.5); background: rgba(94,106,210,0.1); }
+  .user-avatar {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), #2dd4bf); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+  }
+  .user-card .meta { display: flex; flex-direction: column; overflow: hidden; }
+  .user-card .tag { font-size: 10.5px; color: var(--text-dim); font-weight: 400; }
+  .chooser-empty { color: var(--text-dim); font-size: 13px; margin-bottom: 18px; }
+</style>
+</head>
+<body>
+  <div id="graph"></div>
+  <div id="nodeGlow" aria-hidden="true"></div>
+  <div class="ambient-blob a" aria-hidden="true"></div>
+  <div class="ambient-blob b" aria-hidden="true"></div>
+
+  <div id="loading" style="opacity:0;">
+    <div class="loading-card">
+      <div id="loadingPercent">0%</div>
+      <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
+      <div id="loadingDetail">Starting…</div>
+      <div id="loadingCaption">Scanning your files — this page updates as it goes, so there's nothing frozen to wait on.</div>
+    </div>
+  </div>
+
+  <div id="chooser">
+    <div class="chooser-inner">
+      <div id="chooserBack" class="chooser-back hidden">&larr; Back to accounts</div>
+      <h1 id="chooserTitle">fgraph</h1>
+      <div class="sub" id="chooserSub">Whose files do you want to explore?</div>
+      <div id="userList" class="user-list"></div>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <h1>fgraph</h1>
+    <div class="sub">a living map of your files</div>
+
+    <div class="section">
+      <span class="label">Folder</span>
+      <div class="row">
+        <input id="pathInput" type="text" placeholder="folder path…" />
+        <button id="browseBtn" class="ghost">Browse…</button>
+      </div>
+      <div class="row">
+        <input id="depthInput" type="number" min="1" max="12" value="6" />
+        <button id="scanBtn" class="wide">Scan &amp; Visualize</button>
+      </div>
+      <div id="status"></div>
+    </div>
+
+    <div class="section">
+      <span class="label">Search</span>
+      <div class="row">
+        <input id="searchInput" type="text" placeholder="file or folder name…" />
+        <button id="searchBtn" class="ghost">Find</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <span class="label">Selected item</span>
+      <div class="card" id="infoCard">
+        <div class="name">—</div>
+        <div class="path">Click a node, or drag it around — it'll spring back into place.</div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button id="openBtn" class="wide">Open in Explorer</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <span class="label">Legend</span>
+      <div id="legend"></div>
+      <div class="hint">Bigger sphere = bigger file or fuller folder. Folders are colored by depth from the root.</div>
+    </div>
+
+    <div class="section">
+      <span class="label">Controls</span>
+      <div class="hint">
+        Drag = orbit view · Scroll = zoom · Drag a node = pull it (springs back) ·
+        Click = select · Double-click a folder = open it in the graph ·
+        Double-click a file = open it on disk
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/3d-force-graph.min.js"></script>
+  <script src="mock-api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
