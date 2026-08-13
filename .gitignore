@@ -17,6 +17,10 @@ __pycache__/
 fgraph-gui/build/
 fgraph-gui/dist/
 
+# Inno Setup installer output (built via fgraph-gui/build_installer.ps1, attach
+# to GitHub Releases instead of committing -- it's a repackaging of fgraph-gui.exe)
+fgraph-gui/installer_output/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

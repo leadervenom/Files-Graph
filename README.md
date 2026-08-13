@@ -1,71 +1,76 @@
 # fgraph
 
+![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6)
+![license](https://img.shields.io/badge/license-MIT-green)
+
 Turn your real Windows file system into an explorable 3D graph. Instead of a nested list of folders, see your files as a living, spatial map — colored by type, sized by weight, navigable with just a mouse.
 
-Two ways to run it, same idea, different feel:
+Everything is strictly read-only: no filesystem driver, no virtual drive, no writes. Both apps just read your real folders and draw what's there.
 
-| | `fgraph-terminal` | `fgraph-gui` |
+## Two ways to run it
+
+| | `fgraph-gui` | `fgraph-terminal` |
 |---|---|---|
-| **Runs in** | your terminal | a native desktop window |
-| **Look** | braille-rendered 3D wireframe | physics-driven, glowing, "living" graph |
-| **Controls** | keyboard | mouse — drag to orbit, drag a node to pull it |
-| **Best for** | terminal/power users, SSH sessions | everyone else |
+| **Runs in** | a native desktop window | your terminal |
+| **Look** | physics-driven, glowing, "living" graph | braille-rendered 3D wireframe |
+| **Controls** | mouse — drag to orbit, drag a node to pull it | keyboard |
+| **Best for** | everyone else | terminal/power users, SSH sessions |
 
-No filesystem driver, no virtual drive, no writes — both just read your real folders and draw what's there.
+## Getting started
 
-## Quick start (just want to use it, not develop it)
+### Just want to use it
+
+Grab the latest build from the [Releases page](https://github.com/leadervenom/Files-Graph/releases):
+
+- **`fgraph-gui-setup.exe`** — a normal installer wizard (Next → Next → Install), with a Start Menu / desktop shortcut and a proper uninstaller in Windows Settings.
+- **`fgraph-gui.exe`** — portable, no installation. Download and double-click; nothing else on disk.
+
+Either way, there's nothing to install first — no Python, no PowerShell, no dependencies to manage. On the rare machine missing the Microsoft Edge WebView2 Runtime, the app installs it silently on first launch with no prompts.
+
+You can also get the portable exe by cloning the repo — it's committed at the root:
 
 ```powershell
 git clone https://github.com/leadervenom/Files-Graph.git
 ```
 
-Then open the `Files-Graph` folder and double-click `fgraph-gui.exe`. That's it — no Python, no PowerShell, no build step. The exe is committed straight in the repo root, so cloning already gives you the finished app. First launch may take a couple seconds longer if it needs to silently install the Microsoft Edge WebView2 Runtime in the background (only on machines that don't already have it) — nothing to click through either way.
+Then just double-click `fgraph-gui.exe` inside the cloned folder.
 
-## Quick start (developers)
-
-Clone the repo, then run one of the two launchers. Each one sets itself up automatically the first time (compiles the Rust binary / creates a Python virtual environment and installs dependencies) — nothing to configure by hand.
+### Running from source (developers)
 
 ```powershell
 git clone https://github.com/leadervenom/Files-Graph.git
 cd Files-Graph
 
-# Terminal version
+# Terminal version — compiles the Rust binary on first run
 .\fgraph-terminal.ps1
 
-# Desktop version
+# Desktop version — sets up a Python venv and installs deps on first run
 .\fgraph-gui.ps1
 ```
 
-That's it. First run takes a little longer (building/installing); every run after is instant.
+Both launchers set themselves up automatically the first time; every run after is instant.
 
 > Both launchers are plain PowerShell scripts — if double-clicking doesn't work, open PowerShell in the repo folder and run `.\fgraph-terminal.ps1` or `.\fgraph-gui.ps1` directly.
 
-### Rebuilding the standalone .exe
+### Building the distributables
 
-If you change `fgraph-gui`'s Python code, rebuild the committed exe so clones stay up to date. `fgraph-gui/build_exe.ps1` bundles it via PyInstaller and copies the result to the repo root as `fgraph-gui.exe`:
+| Script | Produces | Requires |
+|---|---|---|
+| `fgraph-gui\build_exe.ps1` | `fgraph-gui.exe` (portable, copied to repo root) | Python 3.10+ |
+| `fgraph-gui\build_installer.ps1` | `fgraph-gui\installer_output\fgraph-gui-setup.exe` | [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`) |
 
-```powershell
-cd fgraph-gui
-.\build_exe.ps1
-```
-
-Commit the updated root `fgraph-gui.exe` along with your code changes.
+Rebuild and commit the updated root `fgraph-gui.exe` whenever `fgraph-gui`'s Python code changes. The installer just repackages that exe, so it isn't committed — build it and attach it to a GitHub Release instead.
 
 ## Requirements
 
 - **Windows 10/11**
-- **`fgraph-terminal`** needs the Rust toolchain — install via [rustup.rs](https://rustup.rs)
-- **`fgraph-gui`** needs **Python 3.10+** — install from [python.org](https://python.org)
+- **`fgraph-terminal`** (source builds only) needs the Rust toolchain — install via [rustup.rs](https://rustup.rs)
+- **`fgraph-gui`** (source builds only) needs **Python 3.10+** — install from [python.org](https://python.org)
+- **`fgraph-gui`** needs the Microsoft Edge WebView2 Runtime (present by default on Windows 11 and most up-to-date Windows 10 machines) — installed silently and automatically on first launch if missing, no matter which distribution you use
 
-You only need the toolchain for whichever version you're using — you don't need Rust to run the desktop app, or Python to run the terminal one.
-
-`fgraph-gui` also needs the Microsoft Edge WebView2 Runtime (present by default on Windows 11 and most up-to-date Windows 10 machines). If it's missing, both `fgraph-gui.ps1` and the standalone `.exe` download and install it silently on first run — no prompts, nothing to click through.
+You only need the toolchain for whichever version you're building from source — the prebuilt exe and installer need neither.
 
 ## `fgraph-gui` — the desktop app
-
-```
-.\fgraph-gui.ps1
-```
 
 Opens straight to an account picker: pick a Windows user account on the machine, then a folder inside it (or the whole account). The graph loads progressively — like an open-world game, only the area you're actually looking at renders in detail. Unexplored folders show up as a single dimmed "aggregate" node; double-click one to load its contents in place.
 
@@ -98,25 +103,27 @@ Renders the same idea directly in your terminal using Unicode braille characters
 
 ## How it works
 
-Both apps scan a folder with the same shared rules — file-type category colors (code/docs/image/video/audio/archive/executable/data) and size-weighted node radius — so a file means the same thing visually no matter which version you're looking at. Everything is read-only: no filesystem driver, no writes, no virtual drive. `fgraph-gui` runs entirely offline too — its 3D rendering library and fonts are vendored locally, no CDN calls at runtime.
+Both apps scan a folder with the same shared rules — file-type category colors (code/docs/image/video/audio/archive/executable/data) and size-weighted node radius — so a file means the same thing visually no matter which version you're looking at. `fgraph-gui` runs entirely offline too — its 3D rendering library and fonts are vendored locally, no CDN calls at runtime.
 
 ## Project structure
 
 ```
-fgraph/            Rust terminal app (crossterm + braille rendering)
+fgraph/                     Rust terminal app (crossterm + braille rendering)
   src/
   Cargo.toml
 
-fgraph-gui/         Python desktop app (pywebview + physics-based 3D graph)
-  webapp.py          entry point / native-dialog + filesystem bridge
-  scan.py            filesystem scanning
-  colors.py          shared color/size rules
-  web/               the actual UI (HTML/CSS/JS + vendored 3d-force-graph)
-  build_exe.ps1      rebuilds the standalone exe (developers only)
+fgraph-gui/                 Python desktop app (pywebview + physics-based 3D graph)
+  webapp.py                   entry point / native-dialog + filesystem bridge
+  scan.py                     filesystem scanning
+  colors.py                   shared color/size rules
+  web/                         the actual UI (HTML/CSS/JS + vendored 3d-force-graph)
+  build_exe.ps1                builds the portable fgraph-gui.exe
+  build_installer.ps1          builds the fgraph-gui-setup.exe installer
+  installer.iss                Inno Setup script for the installer
 
-fgraph-terminal.ps1  launcher for the terminal app
-fgraph-gui.ps1       launcher for the desktop app (dev mode, needs Python)
-fgraph-gui.exe       committed, standalone build of fgraph-gui -- double-click, needs nothing installed
+fgraph-terminal.ps1          launcher for the terminal app (source builds)
+fgraph-gui.ps1                launcher for the desktop app (source builds)
+fgraph-gui.exe                committed, standalone build of fgraph-gui — double-click, nothing else needed
 ```
 
 ## Development
