@@ -34,6 +34,8 @@ try {
         --name fgraph-gui `
         --onefile `
         --windowed `
+        --icon "$(Join-Path $root 'icon.ico')" `
+        --version-file "$(Join-Path $root 'version_info.txt')" `
         --add-data "$(Join-Path $root 'web');web" `
         --distpath dist `
         --workpath build `

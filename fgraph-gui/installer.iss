@@ -29,6 +29,7 @@ OutputBaseFilename=fgraph-gui-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
