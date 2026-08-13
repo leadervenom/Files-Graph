@@ -1,5 +1,1 @@
-pyvista
-pyvistaqt
-PySide6
-numpy
 pywebview

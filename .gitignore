@@ -13,6 +13,10 @@ __pycache__/
 # fgraph-gui dev-only mock harness scratch (nothing to ignore here yet, kept
 # vendored assets under web/vendor/ tracked intentionally -- offline-first)
 
+# PyInstaller build output (built via fgraph-gui/build_exe.ps1, not committed)
+fgraph-gui/build/
+fgraph-gui/dist/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

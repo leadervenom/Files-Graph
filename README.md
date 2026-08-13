@@ -13,7 +13,15 @@ Two ways to run it, same idea, different feel:
 
 No filesystem driver, no virtual drive, no writes — both just read your real folders and draw what's there.
 
-## Quick start
+## Quick start (just want to use it, not develop it)
+
+```powershell
+git clone https://github.com/leadervenom/Files-Graph.git
+```
+
+Then open the `Files-Graph` folder and double-click `fgraph-gui.exe`. That's it — no Python, no PowerShell, no build step. The exe is committed straight in the repo root, so cloning already gives you the finished app. First launch may take a couple seconds longer if it needs to silently install the Microsoft Edge WebView2 Runtime in the background (only on machines that don't already have it) — nothing to click through either way.
+
+## Quick start (developers)
 
 Clone the repo, then run one of the two launchers. Each one sets itself up automatically the first time (compiles the Rust binary / creates a Python virtual environment and installs dependencies) — nothing to configure by hand.
 
@@ -32,6 +40,17 @@ That's it. First run takes a little longer (building/installing); every run afte
 
 > Both launchers are plain PowerShell scripts — if double-clicking doesn't work, open PowerShell in the repo folder and run `.\fgraph-terminal.ps1` or `.\fgraph-gui.ps1` directly.
 
+### Rebuilding the standalone .exe
+
+If you change `fgraph-gui`'s Python code, rebuild the committed exe so clones stay up to date. `fgraph-gui/build_exe.ps1` bundles it via PyInstaller and copies the result to the repo root as `fgraph-gui.exe`:
+
+```powershell
+cd fgraph-gui
+.\build_exe.ps1
+```
+
+Commit the updated root `fgraph-gui.exe` along with your code changes.
+
 ## Requirements
 
 - **Windows 10/11**
@@ -39,6 +58,8 @@ That's it. First run takes a little longer (building/installing); every run afte
 - **`fgraph-gui`** needs **Python 3.10+** — install from [python.org](https://python.org)
 
 You only need the toolchain for whichever version you're using — you don't need Rust to run the desktop app, or Python to run the terminal one.
+
+`fgraph-gui` also needs the Microsoft Edge WebView2 Runtime (present by default on Windows 11 and most up-to-date Windows 10 machines). If it's missing, both `fgraph-gui.ps1` and the standalone `.exe` download and install it silently on first run — no prompts, nothing to click through.
 
 ## `fgraph-gui` — the desktop app
 
@@ -91,9 +112,11 @@ fgraph-gui/         Python desktop app (pywebview + physics-based 3D graph)
   scan.py            filesystem scanning
   colors.py          shared color/size rules
   web/               the actual UI (HTML/CSS/JS + vendored 3d-force-graph)
+  build_exe.ps1      rebuilds the standalone exe (developers only)
 
 fgraph-terminal.ps1  launcher for the terminal app
-fgraph-gui.ps1       launcher for the desktop app
+fgraph-gui.ps1       launcher for the desktop app (dev mode, needs Python)
+fgraph-gui.exe       committed, standalone build of fgraph-gui -- double-click, needs nothing installed
 ```
 
 ## Development

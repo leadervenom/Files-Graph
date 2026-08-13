@@ -12,12 +12,70 @@ from __future__ import annotations
 import ctypes
 import json
 import os
+import subprocess
+import sys
+import tempfile
 import threading
 import time
 import traceback
+import urllib.request
+import winreg
 from pathlib import Path
 
 import webview
+
+# The evergreen bootstrapper always resolves to the current WebView2 Runtime release.
+WEBVIEW2_BOOTSTRAPPER_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+WEBVIEW2_CLIENT_ID = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+
+
+def _resource_dir() -> Path:
+    """Directory to load bundled assets (web/) from -- a PyInstaller onefile exe
+    unpacks everything into a temp dir exposed as sys._MEIPASS at runtime; running
+    from source, it's just this file's own folder."""
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS"))
+    return Path(__file__).parent
+
+
+def _webview2_installed() -> bool:
+    for hive, subkey in (
+        (winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}"),
+        (winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}"),
+        (winreg.HKEY_CURRENT_USER, rf"SOFTWARE\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}"),
+    ):
+        try:
+            with winreg.OpenKey(hive, subkey) as key:
+                pv, _ = winreg.QueryValueEx(key, "pv")
+                if pv and pv != "0.0.0.0":
+                    return True
+        except OSError:
+            continue
+    return False
+
+
+def _ensure_webview2() -> None:
+    """A non-developer double-clicking the exe has never heard of WebView2 and can't
+    be handed a manual install step -- so on the (usually rare) machine that lacks it,
+    fetch and silently run Microsoft's own bootstrapper before the window ever opens."""
+    if _webview2_installed():
+        return
+    bootstrapper = Path(tempfile.gettempdir()) / "MicrosoftEdgeWebview2Setup.exe"
+    try:
+        urllib.request.urlretrieve(WEBVIEW2_BOOTSTRAPPER_URL, bootstrapper)
+        subprocess.run([str(bootstrapper), "/silent", "/install"], check=False)
+    finally:
+        bootstrapper.unlink(missing_ok=True)
+    if not _webview2_installed():
+        ctypes.windll.user32.MessageBoxW(
+            0,
+            "fgraph needs the Microsoft Edge WebView2 Runtime, and the automatic "
+            "install didn't complete (likely no internet access). Install it from "
+            "https://developer.microsoft.com/microsoft-edge/webview2/ and try again.",
+            "fgraph - setup required",
+            0x10,  # MB_ICONERROR
+        )
+        sys.exit(1)
 
 from colors import CATEGORY_COLORS, DEPTH_COLORS, human_size, node_color, node_radius, rgb_hex
 from scan import list_children, scan as scan_dir
@@ -239,8 +297,9 @@ class Api:
 
 
 def main():
+    _ensure_webview2()
     api = Api()
-    web_dir = Path(__file__).parent / "web"
+    web_dir = _resource_dir() / "web"
     webview.create_window(
         "fgraph — living file graph",
         str(web_dir / "index.html"),
