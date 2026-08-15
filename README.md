@@ -1,5 +1,7 @@
 # fgraph
 
+![fgraph banner](Banner.png)
+
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
@@ -129,6 +131,13 @@ fgraph-gui.exe                committed, standalone build of fgraph-gui — doub
 ## Development
 
 Both apps have a `?mock=1` dev harness for `fgraph-gui`'s frontend — open `fgraph-gui/web/index.html` via a local static server with `?mock=1` in the URL to iterate on the UI in a regular browser without needing the desktop shell, and `&mockbig=1` to stress-test against a synthetic large tree.
+
+## Documentation
+
+- [INSTALL.md](INSTALL.md) — detailed installation guide (installer, portable exe, or building from source)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to file issues and submit changes
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — community guidelines
+- [SECURITY.md](SECURITY.md) — how to report a vulnerability
 
 ## License
 
