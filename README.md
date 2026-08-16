@@ -11,7 +11,7 @@ Everything is strictly read-only: no filesystem driver, no virtual drive, no wri
 
 
 ## Using it 
-![fgraph video](File_Graph_Video.mp4)
+![fgraph video](File_Graph_Video_compressed.mp4)
 
 
 ## Two ways to run it
