@@ -10,8 +10,9 @@ Turn your real Windows file system into an explorable 3D graph. Instead of a nes
 Everything is strictly read-only: no filesystem driver, no virtual drive, no writes. Both apps just read your real folders and draw what's there.
 
 
-## Using it 
-![fgraph video](File_Graph_Video_compressed.mp4)
+## Using it
+
+https://github.com/user-attachments/assets/e73cd581-26a4-4890-b458-214ddbf301b0
 
 
 ## Two ways to run it
